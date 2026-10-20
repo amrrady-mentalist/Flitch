@@ -1,11 +1,16 @@
-<div align="center">
+# ImageSwap
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Android app (Kotlin + Jetpack Compose). Sends an email with a blank "live image" link,
+then swaps that image from your phone using swipe codes on a black screen.
 
-  <h1>Built with AI Studio</h2>
+Needs your Cloudflare Worker (see worker.js) and FairEmail on the phone.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Folder layout on the phone
+Pick one root folder in Settings. Each sub-folder is one effect:
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+    Magic/
+      Cards/      2H.jpg, 3H.jpg, ... (all possible images for that effect)
+      Numbers/    1.jpg, 2.jpg, ...
 
-</div>
+## Build
+Push this folder to a GitHub repo. Actions -> "Build APK" -> download the artifact.
