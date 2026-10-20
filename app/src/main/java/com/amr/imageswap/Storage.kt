@@ -6,6 +6,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
+import android.provider.DocumentsContract
+import android.util.LruCache
 import androidx.documentfile.provider.DocumentFile
 import java.io.ByteArrayOutputStream
 
@@ -26,30 +28,84 @@ object Storage {
 
     /** Each sub-folder of the root is one effect (Cards, Numbers, ...). */
     fun effects(context: Context, rootUri: String): List<String> {
-        val r = root(context, rootUri) ?: return emptyList()
-        return r.listFiles()
-            .filter { it.isDirectory }
-            .mapNotNull { it.name }
-            .sortedBy { it.lowercase() }
+        if (rootUri.isBlank()) return emptyList()
+        return try {
+            val tree = Uri.parse(rootUri)
+            children(context, tree, DocumentsContract.getTreeDocumentId(tree))
+                .filter { it.mime == DocumentsContract.Document.MIME_TYPE_DIR }
+                .map { it.name }
+                .sortedBy { it.lowercase() }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
-    private fun isImage(f: DocumentFile): Boolean {
-        if (!f.isFile) return false
-        if (f.type?.startsWith("image/") == true) return true
-        val n = f.name?.lowercase() ?: return false
+    class Img(val name: String, val uri: Uri)
+
+    private class Child(val id: String, val name: String, val mime: String)
+
+    /** One single query for all children of a folder (much faster than DocumentFile.listFiles). */
+    private fun children(context: Context, tree: Uri, parentId: String): List<Child> {
+        val out = ArrayList<Child>()
+        val childUri = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parentId)
+        try {
+            context.contentResolver.query(
+                childUri,
+                arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE
+                ),
+                null, null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    out.add(Child(c.getString(0) ?: continue, c.getString(1) ?: continue, c.getString(2) ?: ""))
+                }
+            }
+        } catch (e: Exception) {
+            // unreadable folder: return what we have
+        }
+        return out
+    }
+
+    private fun isImage(c: Child): Boolean {
+        if (c.mime.startsWith("image/")) return true
+        val n = c.name.lowercase()
         return n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png") || n.endsWith(".webp")
     }
 
-    fun images(context: Context, rootUri: String, effect: String): List<DocumentFile> {
-        val dir = root(context, rootUri)?.findFile(effect) ?: return emptyList()
-        return dir.listFiles()
-            .filter { isImage(it) }
-            .sortedBy { it.name?.lowercase() }
+    private fun effectFolderId(context: Context, tree: Uri, effect: String): String? {
+        val rootId = DocumentsContract.getTreeDocumentId(tree)
+        return children(context, tree, rootId)
+            .firstOrNull { it.mime == DocumentsContract.Document.MIME_TYPE_DIR && it.name == effect }?.id
     }
 
-    fun file(context: Context, rootUri: String, effect: String, name: String): DocumentFile? {
-        val dir = root(context, rootUri)?.findFile(effect) ?: return null
-        return dir.findFile(name)
+    fun images(context: Context, rootUri: String, effect: String): List<Img> {
+        if (rootUri.isBlank()) return emptyList()
+        return try {
+            val tree = Uri.parse(rootUri)
+            val dirId = effectFolderId(context, tree, effect) ?: return emptyList()
+            children(context, tree, dirId)
+                .filter { it.mime != DocumentsContract.Document.MIME_TYPE_DIR && isImage(it) }
+                .sortedBy { it.name.lowercase() }
+                .map { Img(it.name, DocumentsContract.buildDocumentUriUsingTree(tree, it.id)) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun file(context: Context, rootUri: String, effect: String, name: String): Img? =
+        images(context, rootUri, effect).firstOrNull { it.name == name }
+
+    private val thumbCache = object : LruCache<String, Bitmap>(48) {}
+
+    /** Same as [bitmap] but remembers recent results, so scrolling the list is instant. */
+    fun cachedBitmap(context: Context, uri: Uri, maxSide: Int): Bitmap? {
+        val key = "$uri@$maxSide"
+        thumbCache.get(key)?.let { return it }
+        val b = bitmap(context, uri, maxSide) ?: return null
+        thumbCache.put(key, b)
+        return b
     }
 
     /** Reads an image at a reduced size (for thumbnails and the big preview). */
@@ -75,7 +131,7 @@ object Storage {
      * Reads an image and returns a JPEG no bigger than ~1.8 MB, so it uploads
      * fast and fits the server limit. Transparent areas become white.
      */
-    fun jpegFor(context: Context, file: DocumentFile, maxSide: Int = 1280): ByteArray? {
+    fun jpegFor(context: Context, file: Img, maxSide: Int = 1280): ByteArray? {
         return try {
             val resolver = context.contentResolver
 
