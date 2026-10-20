@@ -39,7 +39,6 @@ fun BlackScreen(prefs: Prefs, onExit: () -> Unit) {
     val ctx = LocalContext.current
     val activity = ctx as Activity
     val scope = rememberCoroutineScope()
-
     var code by remember { mutableStateOf("") }
     val minPx = with(LocalDensity.current) { 60.dp.toPx() }
 
@@ -63,7 +62,12 @@ fun BlackScreen(prefs: Prefs, onExit: () -> Unit) {
         val fileName = prefs.getCodes(effect)[submitted]
         val base = prefs.workerUrl
         val slot = prefs.currentSlot
-        if (fileName == null || base.isBlank() || slot.isBlank() || prefs.secret.isBlank()) {
+        // A code that matches no image: nothing is uploaded, the email keeps its current picture.
+        if (fileName == null) {
+            vibrate(ctx, Buzz.NO_MATCH)
+            return
+        }
+        if (base.isBlank() || slot.isBlank() || prefs.secret.isBlank()) {
             vibrate(ctx, Buzz.FAIL)
             return
         }
