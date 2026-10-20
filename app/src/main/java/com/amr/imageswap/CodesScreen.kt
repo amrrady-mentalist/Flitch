@@ -64,19 +64,14 @@ fun CodesScreen(
     val ctx = LocalContext.current
     var files by remember { mutableStateOf<List<ImageRef>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-
     // swipe code -> file name
     val codes = remember { mutableStateMapOf<String, String>().apply { putAll(prefs.getCodes(effect)) } }
-
     var confirmAuto by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
 
     LaunchedEffect(effect) {
         files = withContext(Dispatchers.IO) {
-            Storage.images(ctx, prefs.rootUri, effect).mapNotNull { f ->
-                val n = f.name
-                if (n == null) null else ImageRef(n, f.uri)
-            }
+            Storage.images(ctx, prefs.rootUri, effect).map { f -> ImageRef(f.name, f.uri) }
         }
         loading = false
     }
@@ -118,9 +113,7 @@ fun CodesScreen(
                 subtitle = if (loading) effect else "$effect, ${files.size} images",
                 onBack = onBack
             )
-
             Spacer(Modifier.height(16.dp))
-
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 GlassButton(
                     text = "Auto-fill",
@@ -140,7 +133,6 @@ fun CodesScreen(
                     fontSize = 15.sp
                 )
             }
-
             Spacer(Modifier.height(16.dp))
 
             Box(
@@ -160,7 +152,6 @@ fun CodesScreen(
                     }
                 }
             }
-
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -229,7 +220,7 @@ private fun CodeRow(f: ImageRef, code: String?, onClick: () -> Unit) {
 private fun Thumb(uri: Uri) {
     val ctx = LocalContext.current
     val bmp by produceState<ImageBitmap?>(initialValue = null, key1 = uri) {
-        value = withContext(Dispatchers.IO) { Storage.bitmap(ctx, uri, 160)?.asImageBitmap() }
+        value = withContext(Dispatchers.IO) { Storage.cachedBitmap(ctx, uri, 160)?.asImageBitmap() }
     }
     Box(
         modifier = Modifier
