@@ -108,6 +108,8 @@ object Buzz {
     val TICK = longArrayOf(0, 35)
     val OK = longArrayOf(0, 70, 90, 70)
     val FAIL = longArrayOf(0, 500)
+    /** Unknown code: three quick taps, then one long buzz. Unlike anything else. */
+    val NO_MATCH = longArrayOf(0, 30, 60, 30, 60, 30, 90, 450)
 }
 
 fun vibrate(context: Context, pattern: LongArray) {
@@ -126,6 +128,7 @@ fun newSlot(): String {
 }
 
 object MailLauncher {
+
     fun slotUrl(base: String, slot: String) = "$base/i/$slot.jpg"
 
     private fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
