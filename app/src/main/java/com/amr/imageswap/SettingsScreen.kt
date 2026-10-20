@@ -139,6 +139,7 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                         keyboardType = KeyboardType.Uri,
                         modifier = Modifier.fillMaxWidth()
                     )
+
                     GlassField(
                         label = "SECRET KEY",
                         value = secret,
@@ -160,6 +161,7 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
+
                     GlassField(
                         label = "SECONDS TO WAIT AFTER THE LAST SWIPE",
                         value = idleText,
@@ -174,6 +176,7 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                 }
 
                 Spacer(Modifier.height(16.dp))
+
                 GlassButton(
                     text = if (testing) "Testing..." else "Test server and key",
                     onClick = {
@@ -190,6 +193,7 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                     fontSize = 17.sp,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 if (status.isNotBlank()) {
                     val ok = status.startsWith("Server OK and secret key OK")
                     Spacer(Modifier.height(12.dp))
@@ -211,6 +215,7 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                         Text(status, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
+
                 Spacer(Modifier.height(20.dp))
             }
         }

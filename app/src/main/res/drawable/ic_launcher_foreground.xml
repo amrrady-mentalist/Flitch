@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- colour split ghosts -->
+    <group android:translateX="-4">
+        <path
+            android:pathData="M72.12,39.84 A23,23 0 1 0 77,54 L57,54"
+            android:strokeColor="#E63DD6F5"
+            android:strokeWidth="10" />
+    </group>
+    <group android:translateX="4">
+        <path
+            android:pathData="M72.12,39.84 A23,23 0 1 0 77,54 L57,54"
+            android:strokeColor="#E6FF5FA2"
+            android:strokeWidth="10" />
+    </group>
+    <!-- white G cut into three shifted bands -->
+    <group android:translateX="3">
+        <clip-path android:pathData="M0,0H108V45H0Z" />
+        <path
+            android:pathData="M72.12,39.84 A23,23 0 1 0 77,54 L57,54"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="10" />
+    </group>
+    <group android:translateX="-4">
+        <clip-path android:pathData="M0,45H108V63H0Z" />
+        <path
+            android:pathData="M72.12,39.84 A23,23 0 1 0 77,54 L57,54"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="10" />
+    </group>
+    <group android:translateX="2">
+        <clip-path android:pathData="M0,63H108V108H0Z" />
+        <path
+            android:pathData="M72.12,39.84 A23,23 0 1 0 77,54 L57,54"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="10" />
+    </group>
+    <!-- small glitch blocks -->
+    <path android:fillColor="#3DD6F5" android:pathData="M19,46h11v3h-11z" />
+    <path android:fillColor="#FF5FA2" android:pathData="M80,38h9v3h-9z" />
+    <path android:fillColor="#D9FFFFFF" android:pathData="M79,67h11v3h-11z" />
+</vector>

@@ -64,8 +64,10 @@ fun CodesScreen(
     val ctx = LocalContext.current
     var files by remember { mutableStateOf<List<ImageRef>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
+
     // swipe code -> file name
     val codes = remember { mutableStateMapOf<String, String>().apply { putAll(prefs.getCodes(effect)) } }
+
     var confirmAuto by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
 
@@ -116,7 +118,9 @@ fun CodesScreen(
                 subtitle = if (loading) effect else "$effect, ${files.size} images",
                 onBack = onBack
             )
+
             Spacer(Modifier.height(16.dp))
+
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 GlassButton(
                     text = "Auto-fill",
@@ -136,6 +140,7 @@ fun CodesScreen(
                     fontSize = 15.sp
                 )
             }
+
             Spacer(Modifier.height(16.dp))
 
             Box(
@@ -155,6 +160,7 @@ fun CodesScreen(
                     }
                 }
             }
+
             Spacer(Modifier.height(16.dp))
         }
     }

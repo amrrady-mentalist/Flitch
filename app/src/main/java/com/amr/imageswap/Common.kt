@@ -126,7 +126,6 @@ fun newSlot(): String {
 }
 
 object MailLauncher {
-
     fun slotUrl(base: String, slot: String) = "$base/i/$slot.jpg"
 
     private fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

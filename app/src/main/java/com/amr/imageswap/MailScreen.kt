@@ -47,8 +47,7 @@ private object ImgTokenHighlight : VisualTransformation {
                 val j = s.indexOf("%IMG%", i)
                 if (j < 0) {
                     append(s.substring(i))
-                    break
-                }
+                    break                }
                 append(s.substring(i, j))
                 withStyle(SpanStyle(background = GlassColors.Cyan.copy(alpha = 0.45f), fontWeight = FontWeight.Bold)) {
                     append("%IMG%")
@@ -63,6 +62,7 @@ private object ImgTokenHighlight : VisualTransformation {
 @Composable
 fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
     val ctx = LocalContext.current
+
     var to by remember { mutableStateOf("") }
     var subject by remember { mutableStateOf(prefs.mailSubject) }
     var body by remember { mutableStateOf(prefs.mailBody) }
@@ -78,6 +78,7 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
         ) {
             Spacer(Modifier.height(14.dp))
             GlassHeader(title = "Mail", onBack = onBack)
+
             Spacer(Modifier.height(20.dp))
 
             Column(
@@ -94,6 +95,7 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
                     keyboardType = KeyboardType.Email,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 GlassField(
                     label = "MAIL SUBJECT",
                     value = subject,
@@ -103,6 +105,7 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 GlassField(
                     label = "CONTENT OF EMAIL",
                     value = body,
@@ -115,6 +118,7 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
                     visualTransformation = ImgTokenHighlight,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 Text(
                     "%IMG% is replaced by the live image when you send.",
                     fontSize = 13.sp,
@@ -124,6 +128,7 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
             }
 
             Spacer(Modifier.height(10.dp))
+
             Text(
                 "After you send it from FairEmail, come back and open the Black screen.",
                 fontSize = 13.sp,
@@ -132,7 +137,9 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
+
             Spacer(Modifier.height(12.dp))
+
             GlassButton(
                 text = "Open in FairEmail",
                 tinted = true,
@@ -160,6 +167,7 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
                     }
                 }
             )
+
             Spacer(Modifier.height(16.dp))
         }
     }

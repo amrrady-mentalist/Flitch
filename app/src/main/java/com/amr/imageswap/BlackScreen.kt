@@ -39,6 +39,7 @@ fun BlackScreen(prefs: Prefs, onExit: () -> Unit) {
     val ctx = LocalContext.current
     val activity = ctx as Activity
     val scope = rememberCoroutineScope()
+
     var code by remember { mutableStateOf("") }
     val minPx = with(LocalDensity.current) { 60.dp.toPx() }
 
