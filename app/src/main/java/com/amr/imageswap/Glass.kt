@@ -10,6 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -233,10 +239,20 @@ fun GlassField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     trailing: (@Composable () -> Unit)? = null
 ) {
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     Column(
         modifier = modifier
             .then(if (minHeight > 0.dp) Modifier.heightIn(min = minHeight) else Modifier)
             .glass(RoundedCornerShape(24.dp))
+            // A tap anywhere on the card focuses the field and opens the keyboard.
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                focus.requestFocus()
+                keyboard?.show()
+            }
             .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 15.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -244,6 +260,7 @@ fun GlassField(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.weight(1f)) {
                 BasicTextField(
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
                     value = value,
                     onValueChange = onValueChange,
                     singleLine = singleLine,
