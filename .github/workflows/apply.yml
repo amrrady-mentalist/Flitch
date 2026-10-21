@@ -1,0 +1,24 @@
+name: Apply uploaded zip
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack and replace files
+        run: |
+          mkdir /tmp/new
+          unzip -q Glitch-main.zip -d /tmp/new
+          rm -f app/src/main/java/com/amr/imageswap/TextImage.kt
+          rm -f app/src/main/java/com/amr/imageswap/TextScreen.kt
+          cp -a /tmp/new/Glitch-main/. .
+          rm -f Glitch-main.zip
+          git checkout -- .github 2>/dev/null || true
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "Apply Glitch update" || echo "nothing to commit"
+          git push
