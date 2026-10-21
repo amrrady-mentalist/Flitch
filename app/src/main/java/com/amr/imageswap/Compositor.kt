@@ -76,7 +76,7 @@ object Compositor {
         fontId: String,
         sizePx: Int,
         lines: Int,
-        dark: Boolean
+        theme: String
     ): Bitmap {
         val w = TEXT_W * SCALE
         val h = textBoxHeight(sizePx, lines) * SCALE
@@ -85,7 +85,11 @@ object Compositor {
 
         val text = sentence.replace("%TEXT%", value)
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = if (dark) Color.WHITE else Color.BLACK
+            color = when (theme) {
+                "dark" -> Color.WHITE
+                "grey" -> Color.rgb(140, 140, 140)
+                else -> Color.BLACK
+            }
             typeface = Fonts.typeface(context, fontId)
             textSize = sizePx * SCALE.toFloat()
         }

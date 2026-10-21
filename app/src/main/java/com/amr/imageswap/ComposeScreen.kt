@@ -116,7 +116,8 @@ fun ComposeScreen(prefs: Prefs, onMark: () -> Unit, onBack: () -> Unit) {
     var word by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var listening by remember { mutableStateOf(false) }
+    var active by remember { mutableStateOf(prefs.activeOn) }
+    var locked by remember { mutableStateOf(prefs.currentSlot.isNotBlank() && prefs.lockedSlot == prefs.currentSlot) }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
@@ -134,7 +135,7 @@ fun ComposeScreen(prefs: Prefs, onMark: () -> Unit, onBack: () -> Unit) {
     // What the email would show right now.
     val preview by produceState<ImageBitmap?>(
         null,
-        mode, sentence, textFont, size, lines, dark, word, photoFont, ink, photoVersion
+        mode, sentence, textFont, size, lines, theme, word, photoFont, ink, photoVersion
     ) {
         value = withContext(Dispatchers.Default) {
             val shown = word.ifBlank { "Example" }
@@ -143,71 +144,40 @@ fun ComposeScreen(prefs: Prefs, onMark: () -> Unit, onBack: () -> Unit) {
                     Compositor.renderPhoto(ctx, it, prefs.photoQuad, shown, photoFont, ink).asImageBitmap()
                 }
             } else {
-                Compositor.renderText(ctx, sentence, shown, textFont, size, lines, dark).asImageBitmap()
+                Compositor.renderText(ctx, sentence, shown, textFont, size, lines, theme).asImageBitmap()
             }
         }
     }
 
-    // Draws and uploads. The mode decides whether it is a transparent PNG or the edited photo as a JPEG.
+    // Draws and uploads. The first real word locks the email, so it keeps showing that word.
     val doSend: suspend (String) -> Boolean = { value ->
-        if (prefs.workerUrl.isBlank() || prefs.secret.isBlank() || prefs.currentSlot.isBlank()) {
-            status = "Send an email first (and fill in Settings)."
-            vibrate(ctx, Buzz.FAIL)
-            false
-        } else {
-            val data: Pair<ByteArray, String>? = withContext(Dispatchers.Default) {
-                if (prefs.liveMode == "photo") {
-                    Compositor.loadPhoto(ctx)?.let {
-                        Compositor.jpeg(Compositor.renderPhoto(ctx, it, prefs.photoQuad, value, prefs.photoFont, prefs.photoInk)) to "image/jpeg"
-                    }
-                } else {
-                    Compositor.png(
-                        Compositor.renderText(ctx, prefs.textSentence, value, prefs.textFont, prefs.textSize, prefs.textLines, prefs.mailTheme == "dark")
-                    ) to "image/png"
-                }
-            }
-            if (data == null) {
-                status = "Choose a photo first."
-                vibrate(ctx, Buzz.FAIL)
-                false
-            } else {
-                val r = Net.put(prefs.workerUrl, prefs.secret, prefs.currentSlot, data.first, data.second)
-                vibrate(ctx, if (r.isSuccess) Buzz.OK else Buzz.FAIL)
-                status = if (r.isSuccess) "Sent: the email now shows it." else "Could not send: ${r.exceptionOrNull()?.message}"
-                r.isSuccess
-            }
+        val err = LiveSender.send(ctx, prefs, value)
+        vibrate(ctx, if (err == null) Buzz.OK else Buzz.FAIL)
+        status = err ?: "Sent: the email now shows it."
+        if (err == null && value.isNotBlank()) {
+            prefs.lockedSlot = prefs.currentSlot
+            locked = true
         }
+        err == null
     }
-    val sendLatest = rememberUpdatedState(doSend)
 
-    // Listen: watch the word API and send whenever a new word arrives.
-    LaunchedEffect(listening) {
-        if (!listening) return@LaunchedEffect
-        var last: String? = null
+    // Follow what Active mode is doing in the background.
+    LaunchedEffect(Unit) {
+        var seen = prefs.lastStatus
         while (isActive) {
-            val r = Net.selection(prefs.apiUrl, prefs.apiKey)
-            val s = r.getOrNull()
-            if (s != null) {
-                val sig = "${s.count}|${s.value}"
-                if (last == null) {
-                    last = sig // the word that was already there is ignored
-                } else if (sig != last) {
-                    last = sig
-                    word = s.value
-                    sendLatest.value(s.value)
-                }
-            } else if (last == null) {
-                status = "Cannot read the API: ${r.exceptionOrNull()?.message}"
+            active = prefs.activeOn
+            locked = prefs.currentSlot.isNotBlank() && prefs.lockedSlot == prefs.currentSlot
+            if (prefs.lastStatus != seen) {
+                seen = prefs.lastStatus
+                status = seen
             }
-            delay(1500)
+            delay(700)
         }
     }
 
-    // Keep the screen on while listening.
-    DisposableEffect(listening) {
-        val window = (ctx as android.app.Activity).window
-        if (listening) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+        active = true
+        ActiveService.start(ctx)
     }
 
     GlassBackground {
@@ -343,9 +313,10 @@ fun ComposeScreen(prefs: Prefs, onMark: () -> Unit, onBack: () -> Unit) {
                     FontRow(selected = textFont) { textFont = it; prefs.textFont = it }
                     Stepper("TEXT SIZE", size, min = 12, max = 30) { size = it; prefs.textSize = it }
                     Stepper("LINES", lines, min = 1, max = 4) { lines = it; prefs.textLines = it }
+                    SectionLabel("TEXT COLOUR (MATCH THE SPECTATOR'S MAIL THEME)")
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         GlassButton(
-                            "Light mail",
+                            "Black",
                             onClick = { theme = "light"; prefs.mailTheme = "light" },
                             tinted = theme == "light",
                             height = 44.dp,
@@ -353,7 +324,15 @@ fun ComposeScreen(prefs: Prefs, onMark: () -> Unit, onBack: () -> Unit) {
                             modifier = Modifier.weight(1f)
                         )
                         GlassButton(
-                            "Dark mail",
+                            "Grey",
+                            onClick = { theme = "grey"; prefs.mailTheme = "grey" },
+                            tinted = theme == "grey",
+                            height = 44.dp,
+                            fontSize = 15.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        GlassButton(
+                            "White",
                             onClick = { theme = "dark"; prefs.mailTheme = "dark" },
                             tinted = theme == "dark",
                             height = 44.dp,
@@ -382,7 +361,7 @@ fun ComposeScreen(prefs: Prefs, onMark: () -> Unit, onBack: () -> Unit) {
                             }
                         },
                         tinted = true,
-                        enabled = word.isNotBlank() && !busy,
+                        enabled = word.isNotBlank() && !busy && !locked,
                         modifier = Modifier.weight(1.4f)
                     )
                     GlassButton(
@@ -394,48 +373,56 @@ fun ComposeScreen(prefs: Prefs, onMark: () -> Unit, onBack: () -> Unit) {
                                 busy = false
                             }
                         },
-                        enabled = !busy,
+                        enabled = !busy && !locked,
                         modifier = Modifier.weight(1f)
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    GlassButton(
-                        "Get from API",
-                        onClick = {
-                            scope.launch {
-                                val r = Net.selection(prefs.apiUrl, prefs.apiKey)
-                                val s = r.getOrNull()
-                                if (s != null) {
-                                    word = s.value
-                                    status = "Got: ${s.value}"
-                                } else {
-                                    status = "Cannot read the API: ${r.exceptionOrNull()?.message}"
-                                }
-                            }
-                        },
-                        enabled = prefs.apiUrl.isNotBlank(),
-                        height = 48.dp,
-                        fontSize = 15.sp,
-                        modifier = Modifier.weight(1f)
-                    )
-                    GlassButton(
-                        if (listening) "Stop listening" else "Listen and send",
-                        onClick = { listening = !listening },
-                        tinted = listening,
-                        enabled = prefs.apiUrl.isNotBlank(),
-                        height = 48.dp,
-                        fontSize = 15.sp,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                GlassButton(
+                    if (active) "Active: waiting for the word (tap to stop)" else "Active",
+                    onClick = {
+                        if (active) {
+                            ActiveService.stop(ctx)
+                            active = false
+                        } else if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                            ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                        ) {
+                            notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            active = true
+                            ActiveService.start(ctx)
+                        }
+                    },
+                    tinted = true,
+                    enabled = prefs.apiUrl.isNotBlank() && (!locked || active),
+                    height = 56.dp,
+                    fontSize = 16.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 if (prefs.apiUrl.isBlank()) {
-                    Text("Add your word API address in Settings to use these two.", fontSize = 13.sp, color = GlassColors.Dim)
-                } else if (listening) {
+                    Text("Add your word API address in Settings to use Active mode.", fontSize = 13.sp, color = GlassColors.Dim)
+                } else if (active) {
                     Text(
-                        "Listening: the next new word from the API is sent automatically. Keep this screen open.",
+                        "Checking the API every 2 seconds, even if you leave the app. The first new word is sent, then Active switches itself off.",
                         fontSize = 13.sp,
                         color = GlassColors.Dim
                     )
+                }
+                if (locked) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "This email already shows its word and is locked, so it cannot change again.",
+                            fontSize = 13.sp,
+                            color = GlassColors.Amber,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        GlassButton(
+                            "Unlock",
+                            onClick = { prefs.lockedSlot = ""; locked = false },
+                            height = 40.dp,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
                 if (status.isNotBlank()) Text(status, fontSize = 14.sp, color = GlassColors.Dim)
                 Spacer(Modifier.height(16.dp))

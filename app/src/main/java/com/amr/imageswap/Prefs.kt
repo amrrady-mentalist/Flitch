@@ -52,7 +52,7 @@ class Prefs(context: Context) {
             sp.edit().putString("mailSubject", v).apply()
         }
 
-    /** "light" = black text on white, "dark" = white text on black. Used for live-text emails. */
+    /** Colour of the live text: "light" = black text, "dark" = white text, "grey" = grey text. */
     var mailTheme: String
         get() = sp.getString("mailTheme", "light") ?: "light"
         set(v) {
@@ -121,6 +121,34 @@ class Prefs(context: Context) {
         get() = sp.getString("apiKey", "value") ?: "value"
         set(v) {
             sp.edit().putString("apiKey", v.trim()).apply()
+        }
+
+    /** The email slot that already shows its final word. Live text will not change it again. */
+    var lockedSlot: String
+        get() = sp.getString("lockedSlot", "") ?: ""
+        set(v) {
+            sp.edit().putString("lockedSlot", v).apply()
+        }
+
+    /** True while Active mode is watching the word API. */
+    var activeOn: Boolean
+        get() = sp.getBoolean("activeOn", false)
+        set(v) {
+            sp.edit().putBoolean("activeOn", v).apply()
+        }
+
+    /** What Active mode last did, for the Live text screen to show. */
+    var lastStatus: String
+        get() = sp.getString("lastStatus", "") ?: ""
+        set(v) {
+            sp.edit().putString("lastStatus", v).apply()
+        }
+
+    /** Email body used in Photo mode. */
+    var mailBodyPhoto: String
+        get() = sp.getString("mailBodyPhoto", "%IMG%") ?: ""
+        set(v) {
+            sp.edit().putString("mailBodyPhoto", v).apply()
         }
 
     var mailBody: String

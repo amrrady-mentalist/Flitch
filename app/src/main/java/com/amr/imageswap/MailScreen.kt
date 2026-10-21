@@ -71,8 +71,16 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var to by remember { mutableStateOf("") }
     var subject by remember { mutableStateOf(prefs.mailSubject) }
-    var body by remember { mutableStateOf(prefs.mailBody) }
     var mode by remember { mutableStateOf(prefs.liveMode) }
+    // Each mode keeps its own message. In Text mode the message is the sentence that becomes the image.
+    var bodyImages by remember { mutableStateOf(prefs.mailBody) }
+    var bodyPhoto by remember { mutableStateOf(prefs.mailBodyPhoto) }
+    var sentence by remember { mutableStateOf(prefs.textSentence) }
+    val body = when (mode) {
+        "text" -> sentence
+        "photo" -> bodyPhoto
+        else -> bodyImages
+    }
     var opening by remember { mutableStateOf(false) }
 
     fun openMail() {
@@ -101,7 +109,7 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
                 "text" -> {
                     ext = "png"
                     val png = withContext(Dispatchers.Default) {
-                        Compositor.png(Compositor.renderText(ctx, "", "", prefs.textFont, prefs.textSize, prefs.textLines, prefs.mailTheme == "dark"))
+                        Compositor.png(Compositor.renderText(ctx, "", "", prefs.textFont, prefs.textSize, prefs.textLines, prefs.mailTheme))
                     }
                     Net.put(prefs.workerUrl, prefs.secret, slot, png, "image/png")
                 }
@@ -159,11 +167,14 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 )
                 GlassField(
-                    label = "CONTENT OF EMAIL",
+                    label = if (mode == "text") "MESSAGE (%TEXT% = YOUR WORD)" else "CONTENT OF EMAIL",
                     value = body,
                     onValueChange = {
-                        body = it
-                        prefs.mailBody = it
+                        when (mode) {
+                            "text" -> { sentence = it; prefs.textSentence = it }
+                            "photo" -> { bodyPhoto = it; prefs.mailBodyPhoto = it }
+                            else -> { bodyImages = it; prefs.mailBody = it }
+                        }
                     },
                     singleLine = false,
                     minHeight = 150.dp,
@@ -199,7 +210,7 @@ fun MailScreen(prefs: Prefs, onBack: () -> Unit) {
                 }
                 Text(
                     when (mode) {
-                        "text" -> "%IMG% becomes your sentence, written as plain text. Set it up under Live text."
+                        "text" -> "The whole message is drawn as one transparent image with %TEXT% replaced by your word, so nothing else is added to the email."
                         "photo" -> "%IMG% becomes your photo with the word written on it. Set it up under Live text."
                         else -> "%IMG% is replaced by the live image when you send."
                     },
