@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.OpenWith
+import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -51,14 +52,12 @@ import kotlinx.coroutines.withContext
 fun HomeScreen(prefs: Prefs, go: (Screen) -> Unit) {
     val ctx = LocalContext.current
     val rootUri = prefs.rootUri
-
     var effects by remember { mutableStateOf<List<String>>(emptyList()) }
     var active by remember { mutableStateOf(prefs.activeEffect) }
 
     LaunchedEffect(rootUri) {
         effects = if (rootUri.isBlank()) emptyList()
         else withContext(Dispatchers.IO) { Storage.effects(ctx, rootUri) }
-
         if (active !in effects && effects.isNotEmpty()) {
             active = effects.first()
             prefs.activeEffect = active
@@ -75,7 +74,6 @@ fun HomeScreen(prefs: Prefs, go: (Screen) -> Unit) {
         ) {
             Spacer(Modifier.height(14.dp))
             Text("Glitch", fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.7).sp)
-
             Spacer(Modifier.height(22.dp))
             SectionLabel("EFFECT")
             Spacer(Modifier.height(10.dp))
@@ -121,14 +119,12 @@ fun HomeScreen(prefs: Prefs, go: (Screen) -> Unit) {
             StepCard(
                 kicker = "STEP 1",
                 title = "Write and send the email",
-                subtitle = "Opens FairEmail with the live image",
+                subtitle = "Opens FairEmail with the live image or text",
                 icon = Icons.Rounded.Email,
                 tinted = false,
                 onClick = { go(Screen.Mail) }
             )
-
             Spacer(Modifier.height(12.dp))
-
             StepCard(
                 kicker = "STEP 2",
                 title = "Black screen",
@@ -138,17 +134,14 @@ fun HomeScreen(prefs: Prefs, go: (Screen) -> Unit) {
                 enabled = active.isNotBlank(),
                 onClick = { go(Screen.Black) }
             )
-
             Spacer(Modifier.height(12.dp))
-
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Tile(
-                    label = "Swipe codes",
+                    label = "Codes",
                     icon = Icons.Rounded.OpenWith,
                     enabled = active.isNotBlank(),
                     modifier = Modifier.weight(1f)
                 ) { go(Screen.Codes(active)) }
-
                 Tile(label = "Test link", icon = Icons.Rounded.Link, modifier = Modifier.weight(1f)) {
                     if (prefs.workerUrl.isBlank()) {
                         Toast.makeText(ctx, "Enter the server address in Settings first", Toast.LENGTH_LONG).show()
@@ -159,12 +152,13 @@ fun HomeScreen(prefs: Prefs, go: (Screen) -> Unit) {
                         ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }
                 }
-
+                Tile(label = "Live text", icon = Icons.Rounded.TextFields, modifier = Modifier.weight(1f)) {
+                    go(Screen.Text)
+                }
                 Tile(label = "Settings", icon = Icons.Rounded.Tune, modifier = Modifier.weight(1f)) {
                     go(Screen.Settings)
                 }
             }
-
             Spacer(Modifier.height(16.dp))
         }
     }

@@ -52,6 +52,77 @@ class Prefs(context: Context) {
             sp.edit().putString("mailSubject", v).apply()
         }
 
+    /** "light" = black text on white, "dark" = white text on black. Used for live-text emails. */
+    var mailTheme: String
+        get() = sp.getString("mailTheme", "light") ?: "light"
+        set(v) {
+            sp.edit().putString("mailTheme", v).apply()
+        }
+
+    /** What the email's live image holds: "images" (your folders), "text" or "photo". */
+    var liveMode: String
+        get() = sp.getString("liveMode", "images") ?: "images"
+        set(v) {
+            sp.edit().putString("liveMode", v).apply()
+        }
+
+    var textSentence: String
+        get() = sp.getString("textSentence", "My prediction is %TEXT%") ?: ""
+        set(v) {
+            sp.edit().putString("textSentence", v).apply()
+        }
+
+    var textFont: String
+        get() = sp.getString("textFont", "sans") ?: "sans"
+        set(v) {
+            sp.edit().putString("textFont", v).apply()
+        }
+
+    var textSize: Int
+        get() = sp.getInt("textSize", 16)
+        set(v) {
+            sp.edit().putInt("textSize", v).apply()
+        }
+
+    var textLines: Int
+        get() = sp.getInt("textLines", 2)
+        set(v) {
+            sp.edit().putInt("textLines", v).apply()
+        }
+
+    var photoFont: String
+        get() = sp.getString("photoFont", "caveat") ?: "caveat"
+        set(v) {
+            sp.edit().putString("photoFont", v).apply()
+        }
+
+    var photoInk: Int
+        get() = sp.getInt("photoInk", 0xFF1B1B3A.toInt())
+        set(v) {
+            sp.edit().putInt("photoInk", v).apply()
+        }
+
+    /** The four corners of the writing area on the photo. */
+    var photoQuad: String
+        get() = sp.getString("photoQuad", Compositor.DEFAULT_QUAD) ?: Compositor.DEFAULT_QUAD
+        set(v) {
+            sp.edit().putString("photoQuad", v).apply()
+        }
+
+    /** Address of a JSON page (like Inject's) that returns the word to show. */
+    var apiUrl: String
+        get() = sp.getString("apiUrl", "") ?: ""
+        set(v) {
+            sp.edit().putString("apiUrl", v.trim()).apply()
+        }
+
+    /** Name of the field in that JSON that holds the word. */
+    var apiKey: String
+        get() = sp.getString("apiKey", "value") ?: "value"
+        set(v) {
+            sp.edit().putString("apiKey", v.trim()).apply()
+        }
+
     var mailBody: String
         get() = sp.getString("mailBody", "It's a game of luck \uD83E\uDD1E:\n\n%IMG%") ?: ""
         set(v) {

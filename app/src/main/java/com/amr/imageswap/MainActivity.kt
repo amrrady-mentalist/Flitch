@@ -36,7 +36,6 @@ fun App() {
     val ctx = LocalContext.current
     val prefs = remember { Prefs(ctx) }
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
-
     // One list position per effect, so you return to where you were after setting a code.
     val listStates = remember { mutableMapOf<String, LazyListState>() }
 
@@ -44,6 +43,7 @@ fun App() {
     BackHandler(enabled = screen !is Screen.Home && screen !is Screen.Black) {
         screen = when (val s = screen) {
             is Screen.Assign -> Screen.Codes(s.effect)
+            is Screen.PhotoMark -> Screen.Text
             else -> Screen.Home
         }
     }
@@ -52,6 +52,8 @@ fun App() {
         is Screen.Home -> HomeScreen(prefs) { screen = it }
         is Screen.Settings -> SettingsScreen(prefs) { screen = Screen.Home }
         is Screen.Mail -> MailScreen(prefs) { screen = Screen.Home }
+        is Screen.Text -> ComposeScreen(prefs, onMark = { screen = Screen.PhotoMark }, onBack = { screen = Screen.Home })
+        is Screen.PhotoMark -> PhotoMarkScreen(prefs) { screen = Screen.Text }
         is Screen.Codes -> CodesScreen(
             prefs = prefs,
             effect = s.effect,

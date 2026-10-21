@@ -19,13 +19,13 @@ object Net {
     }
 
     /** Replaces the image in a slot. */
-    suspend fun put(base: String, secret: String, slot: String, jpeg: ByteArray): Result<Unit> =
+    suspend fun put(base: String, secret: String, slot: String, jpeg: ByteArray, contentType: String = "image/jpeg"): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val c = connect("$base/i/$slot", "PUT", secret)
                 try {
                     c.doOutput = true
-                    c.setRequestProperty("Content-Type", "image/jpeg")
+                    c.setRequestProperty("Content-Type", contentType)
                     c.setFixedLengthStreamingMode(jpeg.size)
                     c.outputStream.use { it.write(jpeg) }
                     val code = c.responseCode
@@ -34,6 +34,32 @@ object Net {
                     c.disconnect()
                 }
                 Unit
+            }
+        }
+
+    class Selection(val count: Int, val value: String)
+
+    /**
+     * Reads a JSON address like {"count":1832,"value":"delete",...} and returns the count and the word.
+     * [key] is the name of the field that holds the word (normally "value").
+     */
+    suspend fun selection(url: String, key: String): Result<Selection> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val c = URL(url.trim()).openConnection() as HttpURLConnection
+                try {
+                    c.connectTimeout = 8000
+                    c.readTimeout = 8000
+                    c.useCaches = false
+                    c.setRequestProperty("Cache-Control", "no-cache")
+                    if (c.responseCode !in 200..299) error("HTTP ${c.responseCode}")
+                    val body = c.inputStream.bufferedReader().use { it.readText() }
+                    val j = org.json.JSONObject(body)
+                    if (!j.has(key)) error("No field called $key")
+                    Selection(j.optInt("count", -1), j.optString(key, ""))
+                } finally {
+                    c.disconnect()
+                }
             }
         }
 

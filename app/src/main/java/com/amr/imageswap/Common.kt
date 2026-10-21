@@ -23,6 +23,8 @@ sealed interface Screen {
     object Settings : Screen
     object Mail : Screen
     object Black : Screen
+    object Text : Screen
+    object PhotoMark : Screen
     class Codes(val effect: String) : Screen
     class Assign(val effect: String, val file: String) : Screen
 }
@@ -129,20 +131,43 @@ fun newSlot(): String {
 
 object MailLauncher {
 
-    fun slotUrl(base: String, slot: String) = "$base/i/$slot.jpg"
+    fun slotUrl(base: String, slot: String, ext: String = "jpg") = "$base/i/$slot.$ext"
 
     private fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    /** Turns your text into an HTML email, replacing %IMG% with the live image. */
-    fun buildHtml(body: String, imageUrl: String): String {
-        val img = "<img src=\"$imageUrl\" style=\"width:100%;max-width:600px;height:auto\">"
-        val parts = body.split("%IMG%")
-        val sb = StringBuilder("<html><body>")
-        parts.forEachIndexed { i, p ->
-            sb.append(esc(p).replace("\n", "<br>"))
-            if (i < parts.size - 1) sb.append(img)
+    /**
+     * Turns your text into an HTML email. Every %IMG% (or %TEXT%) becomes the live image.
+     * In "text" mode the email gets fixed colours and the image keeps a fixed size, so the
+     * transparent text blends in like normal writing.
+     */
+    fun buildHtml(body: String, imageUrl: String, mode: String = "images", theme: String = "light", textHeight: Int = 40): String {
+        val img = if (mode == "text") {
+            "<img src=\"$imageUrl\" width=\"${Compositor.TEXT_W}\" height=\"$textHeight\" style=\"display:block;border:0\">"
+        } else {
+            "<img src=\"$imageUrl\" style=\"width:100%;max-width:600px;height:auto\">"
         }
-        if (parts.size == 1) sb.append("<br>").append(img)
+        val dark = theme == "dark"
+        val bg = if (dark) "#000000" else "#FFFFFF"
+        val fg = if (dark) "#FFFFFF" else "#000000"
+
+        val sb = StringBuilder()
+        if (mode == "text") {
+            sb.append("<html><body bgcolor=\"$bg\" text=\"$fg\" style=\"background-color:$bg;color:$fg\">")
+            sb.append("<div style=\"background-color:$bg;color:$fg\">")
+        } else {
+            sb.append("<html><body>")
+        }
+        var last = 0
+        var tokens = 0
+        for (m in Regex("%IMG%|%TEXT%").findAll(body)) {
+            sb.append(esc(body.substring(last, m.range.first)).replace("\n", "<br>"))
+            sb.append(img)
+            tokens++
+            last = m.range.last + 1
+        }
+        sb.append(esc(body.substring(last)).replace("\n", "<br>"))
+        if (tokens == 0) sb.append("<br>").append(img)
+        if (mode == "text") sb.append("</div>")
         sb.append("</body></html>")
         return sb.toString()
     }

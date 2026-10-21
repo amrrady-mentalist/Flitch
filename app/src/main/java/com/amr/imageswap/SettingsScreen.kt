@@ -58,6 +58,8 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
     var secret by remember { mutableStateOf(prefs.secret) }
     var showSecret by remember { mutableStateOf(false) }
     var idleText by remember { mutableStateOf((prefs.idleMs / 1000.0).toString().removeSuffix(".0")) }
+    var apiUrl by remember { mutableStateOf(prefs.apiUrl) }
+    var apiKey by remember { mutableStateOf(prefs.apiKey) }
     var folder by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var testing by remember { mutableStateOf(false) }
@@ -139,7 +141,6 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                         keyboardType = KeyboardType.Uri,
                         modifier = Modifier.fillMaxWidth()
                     )
-
                     GlassField(
                         label = "SECRET KEY",
                         value = secret,
@@ -161,7 +162,6 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
-
                     GlassField(
                         label = "SECONDS TO WAIT AFTER THE LAST SWIPE",
                         value = idleText,
@@ -175,8 +175,32 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                SectionLabel("WORD API (OPTIONAL)", Modifier.padding(start = 4.dp, top = 22.dp, bottom = 10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GlassField(
+                        label = "API ADDRESS",
+                        value = apiUrl,
+                        onValueChange = {
+                            apiUrl = it
+                            prefs.apiUrl = it
+                        },
+                        placeholder = "https://11z.co/_w/12345/selection",
+                        keyboardType = KeyboardType.Uri,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    GlassField(
+                        label = "FIELD THAT HOLDS THE WORD",
+                        value = apiKey,
+                        onValueChange = {
+                            apiKey = it
+                            prefs.apiKey = it
+                        },
+                        placeholder = "value",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
+                Spacer(Modifier.height(16.dp))
                 GlassButton(
                     text = if (testing) "Testing..." else "Test server and key",
                     onClick = {
@@ -193,7 +217,6 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                     fontSize = 17.sp,
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 if (status.isNotBlank()) {
                     val ok = status.startsWith("Server OK and secret key OK")
                     Spacer(Modifier.height(12.dp))
@@ -215,7 +238,6 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                         Text(status, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
-
                 Spacer(Modifier.height(20.dp))
             }
         }

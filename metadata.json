@@ -1,5 +1,5 @@
 {
-  "name": "Glitch",
+  "name": "ImageSwap",
   "description": "Swap live images via Cloudflare worker and swipe gestures on a black screen",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
