@@ -161,7 +161,7 @@ object Compositor {
 
     /**
      * Writes [text] onto the marked four-sided area of the photo. The writing is bent to follow the area
-     * (so it lies flat on a tilted card) and blended in like ink.
+     * (so it lies flat on a tilted card) and blended in like ink (darken blend, so the empty parts of the writing layer leave the photo untouched).
      */
     fun renderPhoto(context: Context, photo: Bitmap, quadSpec: String, text: String, fontId: String, ink: Int): Bitmap {
         val out = photo.copy(Bitmap.Config.ARGB_8888, true)
@@ -198,7 +198,7 @@ object Compositor {
         val m = Matrix()
         m.setPolyToPoly(src, 0, dst, 0, 4)
         val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.DARKEN)
             alpha = 235
         }
         Canvas(out).drawBitmap(flat, m, p)
