@@ -12,7 +12,7 @@ object LiveSender {
         if (prefs.workerUrl.isBlank() || prefs.secret.isBlank() || prefs.currentSlot.isBlank()) {
             return "Send an email first (and fill in Settings)."
         }
-        val data: Pair<ByteArray, String>? = withContext(Dispatchers.Default) {
+        val loaded: Pair<ByteArray, String>? = withContext(Dispatchers.Default) {
             if (prefs.liveMode == "photo") {
                 Compositor.loadPhoto(ctx)?.let {
                     Compositor.jpeg(Compositor.renderPhoto(ctx, it, prefs.photoQuad, value, prefs.photoFont, prefs.photoInk)) to "image/jpeg"
@@ -22,7 +22,8 @@ object LiveSender {
                     Compositor.renderText(ctx, prefs.textSentence, value, prefs.textFont, prefs.textSize, prefs.textLines, prefs.mailTheme)
                 ) to "image/png"
             }
-        } ?: return "Choose a photo first."
+        }
+        val data = loaded ?: return "Choose a photo first."
         val r = Net.put(prefs.workerUrl, prefs.secret, prefs.currentSlot, data.first, data.second)
         return if (r.isSuccess) null else "Could not send: ${r.exceptionOrNull()?.message}"
     }
