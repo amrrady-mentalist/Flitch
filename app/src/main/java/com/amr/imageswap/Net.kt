@@ -19,13 +19,14 @@ object Net {
     }
 
     /** Replaces the image in a slot. */
-    suspend fun put(base: String, secret: String, slot: String, jpeg: ByteArray, contentType: String = "image/jpeg"): Result<Unit> =
+    suspend fun put(base: String, secret: String, slot: String, jpeg: ByteArray, contentType: String = "image/jpeg", keep: Boolean = false): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val c = connect("$base/i/$slot", "PUT", secret)
                 try {
                     c.doOutput = true
                     c.setRequestProperty("Content-Type", contentType)
+                    if (keep) c.setRequestProperty("X-Keep", "1")
                     c.setFixedLengthStreamingMode(jpeg.size)
                     c.outputStream.use { it.write(jpeg) }
                     val code = c.responseCode
@@ -57,6 +58,38 @@ object Net {
                     val j = org.json.JSONObject(body)
                     if (!j.has(key)) error("No field called $key")
                     Selection(j.optInt("count", -1), j.optString(key, ""))
+                } finally {
+                    c.disconnect()
+                }
+            }
+        }
+
+    class ServerUsage(val count: Int, val bytes: Long)
+
+    /** How many images the server holds and how much space they use. */
+    suspend fun storage(base: String, secret: String): Result<ServerUsage> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val c = connect("$base/admin/stats", "GET", secret)
+                try {
+                    if (c.responseCode !in 200..299) error("HTTP ${c.responseCode} (update the worker first)")
+                    val j = org.json.JSONObject(c.inputStream.bufferedReader().use { it.readText() })
+                    ServerUsage(j.optInt("count"), j.optLong("bytes"))
+                } finally {
+                    c.disconnect()
+                }
+            }
+        }
+
+    /** Deletes up to a batch of images older than [days] (0 = all). Returns (deleted, remaining). */
+    suspend fun clean(base: String, secret: String, days: Int): Result<Pair<Int, Int>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val c = connect("$base/admin/clean?days=$days", "POST", secret)
+                try {
+                    if (c.responseCode !in 200..299) error("HTTP ${c.responseCode} (update the worker first)")
+                    val j = org.json.JSONObject(c.inputStream.bufferedReader().use { it.readText() })
+                    j.optInt("deleted") to j.optInt("remaining")
                 } finally {
                     c.disconnect()
                 }
