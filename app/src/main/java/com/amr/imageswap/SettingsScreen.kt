@@ -27,7 +27,9 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,6 +65,10 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
     var folder by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var testing by remember { mutableStateOf(false) }
+    var storageText by remember { mutableStateOf("") }
+    var storageBusy by remember { mutableStateOf(false) }
+    var cleanDaysText by remember { mutableStateOf("30") }
+    var confirmDays by remember { mutableStateOf<Int?>(null) } // null = no dialog, 0 = delete all
 
     val rootUri = prefs.rootUri
     LaunchedEffect(rootUri) {
@@ -238,8 +244,102 @@ fun SettingsScreen(prefs: Prefs, onBack: () -> Unit) {
                         Text(status, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
+                SectionLabel("STORAGE ON THE SERVER", Modifier.padding(start = 4.dp, top = 22.dp, bottom = 10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GlassButton(
+                        text = if (storageBusy) "Working..." else "Check storage",
+                        onClick = {
+                            storageBusy = true
+                            storageText = ""
+                            scope.launch {
+                                val r = Net.storage(prefs.workerUrl, prefs.secret)
+                                val st = r.getOrNull()
+                                storageText = if (st != null) {
+                                    "${st.count} images, ${"%.1f".format(st.bytes / 1048576.0)} MB used of 1000 MB free"
+                                } else {
+                                    "Could not check: ${r.exceptionOrNull()?.message}"
+                                }
+                                storageBusy = false
+                            }
+                        },
+                        enabled = url.isNotBlank() && secret.isNotBlank() && !storageBusy,
+                        height = 52.dp,
+                        fontSize = 16.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    GlassField(
+                        label = "DELETE IMAGES OLDER THAN (DAYS)",
+                        value = cleanDaysText,
+                        onValueChange = { cleanDaysText = it.filter { c -> c.isDigit() }.take(4) },
+                        keyboardType = KeyboardType.Number,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GlassButton(
+                            text = "Delete old",
+                            onClick = { confirmDays = cleanDaysText.toIntOrNull()?.coerceAtLeast(1) ?: 30 },
+                            enabled = url.isNotBlank() && secret.isNotBlank() && !storageBusy,
+                            tinted = true,
+                            height = 52.dp,
+                            fontSize = 16.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        GlassButton(
+                            text = "Delete all",
+                            onClick = { confirmDays = 0 },
+                            enabled = url.isNotBlank() && secret.isNotBlank() && !storageBusy,
+                            height = 52.dp,
+                            fontSize = 16.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (storageText.isNotBlank()) {
+                        Text(storageText, fontSize = 14.sp, color = GlassColors.Dim, modifier = Modifier.padding(horizontal = 6.dp))
+                    }
+                }
                 Spacer(Modifier.height(20.dp))
             }
         }
+    }
+
+    val days = confirmDays
+    if (days != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDays = null },
+            title = { Text(if (days == 0) "Delete ALL images?" else "Delete images older than $days days?") },
+            text = {
+                Text(
+                    "Emails that show a deleted image go back to blank when they are opened. " +
+                        "This cannot be undone." + if (days == 0) " Do not do this just before a performance." else ""
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDays = null
+                    storageBusy = true
+                    storageText = "Deleting..."
+                    scope.launch {
+                        var total = 0
+                        var failure: String? = null
+                        var rounds = 0
+                        while (rounds < 200) {
+                            rounds++
+                            val r = Net.clean(prefs.workerUrl, prefs.secret, days)
+                            val p = r.getOrNull()
+                            if (p == null) {
+                                failure = r.exceptionOrNull()?.message
+                                break
+                            }
+                            total += p.first
+                            storageText = "Deleting... $total so far"
+                            if (p.second == 0 || p.first == 0) break
+                        }
+                        storageText = if (failure != null) "Stopped after $total: $failure" else "Deleted $total images."
+                        storageBusy = false
+                    }
+                }) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDays = null }) { Text("Cancel") } }
+        )
     }
 }
